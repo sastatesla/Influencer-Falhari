@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
+
+.react-datepicker__month-container {
+    float: center;
+    width: 100%;
+}
+
+.react-datepicker{
+    width: 100%;
+    border: none;
+    font-family: "Nunito", sans-serif;
+    font-size: 16px;
+}
+.react-datepicker__header{
+    background-color: white;
+}
+
+.react-datepicker__day-name{
+    font-weight:500;
+}
+.react-datepicker__day--keyboard-selected{
+    background-color: rgb(0, 157, 255);
+    color: white;
+}
+
+.react-datepicker__day--highlighted{
+    background-color: orangered;
+}
+
+.react-datepicker__day, .react-datepicker__month-text, .react-datepicker__quarter-text, .react-datepicker__year-text{
+    margin: 6.5px;
+}
+
+.react-datepicker__day-name{
+    margin: 6.5px;
+}
