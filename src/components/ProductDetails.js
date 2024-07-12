@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { fetchProductById, fetchCategoryById } from '../services/api';
-import { IoShareSocialOutline } from "react-icons/io5";
+import { useParams, useNavigate } from 'react-router-dom'; // Import useNavigate
+import { fetchProductById } from '../services/api';
+import { IoShareSocialOutline, IoClose } from "react-icons/io5";
 
 const ProductDetails = () => {
   const { productId } = useParams();
   const [product, setProduct] = useState(null);
   const [activeTab, setActiveTab] = useState('description');
+  const [isPopupVisible, setIsPopupVisible] = useState(false);
+  const navigate = useNavigate(); // Initialize useNavigate
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -29,9 +31,21 @@ const ProductDetails = () => {
         url: window.location.href,
       }).catch((error) => console.error('Error sharing:', error));
     } else {
-      // Fallback for browsers that do not support the Web Share API
       alert('Share feature is not supported in your browser.');
     }
+  };
+
+  const calculatePrice = (days) => {
+    return (product.discountFees * days).toFixed(2);
+  };
+
+  const handleSubscriptionSelect = (days) => {
+    const selectedSubscription = {
+      days,
+      price: calculatePrice(days),
+    };
+    // Navigate to the scheduling page with the selected subscription data
+    navigate(`/schedule/${productId}`, { state: { selectedSubscription } });
   };
 
   if (!product) {
@@ -46,7 +60,7 @@ const ProductDetails = () => {
           <div>
             <h2 className="text-2xl font-bold mb-2">{product.title}</h2>
           </div>
-          <button 
+          <button
             className="bg-gray-200 p-2 rounded-full hover:bg-gray-300"
             onClick={handleShare}
           >
@@ -80,19 +94,40 @@ const ProductDetails = () => {
         {activeTab === 'keyBenefits' && <p className='p-2'>{product.keyBenefits}</p>}
       </div>
 
-      
+      <div className="fixed bottom-0 py-2 border-t-2 bg-white w-full bg-white shadow-lg">
+        <p className='w-5/6 text-center leading-none pb-2 text-gray-500'>Freshly prepared and quickly delivered by <span className='color'>Falhari</span></p>
+        <button
+          className="bg-theme  text-white py-2 px-28  rounded"
+          onClick={() => setIsPopupVisible(true)}
+        >
+          Subscribe Now
+        </button>
+      </div>
 
-      <Link
-        to={`/schedule/${productId}`}
-        
-      >
-      <div className="bg-white w-full text-white px-2 py-2 border-t shadow-lg  hover:bg-blue-700 fixed bottom-0 right-0">
-      <p className='text-gray-400 text-sm text-center'>Freshly Prepared and Quickly Delivered by <span className='color'>Falhari</span></p>
-        <div className='text-center bg-theme rounded py-2'>
-        Schedule Now
+      {isPopupVisible && (
+        <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-end z-50">
+          <div className="bg-white w-full p-4 rounded-t-lg shadow-lg slide-up">
+            <button className="top-2 right-2 text-gray-600" onClick={() => setIsPopupVisible(false)}>
+              <IoClose size={24} />
+            </button>
+            <h2 className="text-lg font-bold mb-4">Select Subscription</h2>
+            <ul>
+              <li className="p-2 border-b cursor-pointer " onClick={() => handleSubscriptionSelect(1)}>
+                One day trial - Rs {calculatePrice(1)}
+              </li>
+              <li className="p-2 border-b cursor-pointer" onClick={() => handleSubscriptionSelect(7)}>
+                1 week - Rs {calculatePrice(7)}
+              </li>
+              <li className="p-2 border-b cursor-pointer" onClick={() => handleSubscriptionSelect(14)}>
+                2 weeks - Rs {calculatePrice(14)}
+              </li>
+              <li className="p-2 cursor-pointer" onClick={() => handleSubscriptionSelect(330)}>
+                1 months - Rs {calculatePrice(30)}
+              </li>
+            </ul>
+          </div>
         </div>
-        </div>
-      </Link>
+      )}
     </div>
   );
 };

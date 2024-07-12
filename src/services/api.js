@@ -213,14 +213,28 @@ export const getOrderById = async (orderId) => {
   }
 };
 
-export const updateOrderStatus = async (orderId, statusData) => {
+export const updateOrderStatus = async (orderId, dateIndex, statusData) => {
   try {
-    const response = await axios.put(`${BASE_URL}/orders/updateStatus/${orderId}`, statusData);
+    console.log('Status Data', statusData);
+    const response = await axios.put(`${BASE_URL}/orders/updateStatus/${orderId}/${dateIndex}`, statusData);
     return response.data;
   } catch (error) {
     throw error;
   }
 };
+
+// export const updateOrderStatusSkip = async (orderId, dateIndex, statusData) => {
+//   try {
+//     const response = await axios.put(`${BASE_URL}/orders/updateStatus/${orderId}/${dateIndex}`, statusData);
+//     return response.data;
+//   } catch (error) {
+//     throw error;
+//   }
+// };
+
+
+
+
 
 export const deleteOrder = async (orderId) => {
   try {

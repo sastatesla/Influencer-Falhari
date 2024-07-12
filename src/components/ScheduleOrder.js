@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { format } from 'date-fns';
+import { format, addDays  } from 'date-fns';
 import './ScheduleOrder.css';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { Link, useNavigate } from 'react-router-dom';
 import { MdAddLocationAlt } from "react-icons/md";
 import { fetchProductById, createOrder } from '../services/api';
 import { IoCashOutline } from "react-icons/io5";
@@ -17,11 +16,14 @@ const ScheduleOrder = () => {
   const [userId, setUserId] = useState('');
   const [product, setProduct] = useState(null);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState('');
-  const [selectedDates, setSelectedDates] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(null);
   const [address, setAddress] = useState('');
   const [newAddress, setNewAddress] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('COD'); // Default to Cash on Delivery
+  const [selectedSubscription, setSelectedSubscription] = useState(null); // State to hold selected subscription
+  const [endDate, setEndDate] = useState(null);
+
   const BASE_URL = 'http://localhost:4000/api';
 
   useEffect(() => {
@@ -60,11 +62,19 @@ const ScheduleOrder = () => {
     fetchProduct();
   }, [productId]);
 
+  const location = useLocation();
+
+  useEffect(() => {
+    // Load selected subscription from location state on component mount
+    const { selectedSubscription } = location.state || {};
+    setSelectedSubscription(selectedSubscription);
+  }, []);
+
   const handleDateChange = (date) => {
-    if (selectedDates.some(selectedDate => selectedDate.toDateString() === date.toDateString())) {
-      setSelectedDates(selectedDates.filter(selectedDate => selectedDate.toDateString() !== date.toDateString()));
-    } else {
-      setSelectedDates([...selectedDates, date]);
+    setSelectedDate(date);
+    if (selectedSubscription && selectedSubscription.days) {
+      const endDate = addDays(date, selectedSubscription.days - 1); 
+      setEndDate(endDate);
     }
   };
 
@@ -87,6 +97,13 @@ const ScheduleOrder = () => {
         headers: { Authorization: `Bearer ${token}` }
       };
 
+      const datesArray = [];
+      let currentDate = new Date(selectedDate);
+      while (currentDate <= endDate) {
+        datesArray.push(new Date(currentDate));
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
       const orderData = {
         userId,
         shippingAddress: address,
@@ -95,7 +112,7 @@ const ScheduleOrder = () => {
           quantity: 1, 
           price: product.discountFees || product.regularFees,
         }],
-        selectedDates: selectedDates,
+        selectedDates: datesArray,
         timeSlot: selectedTimeSlot,
         totalAmount: calculateTotalPrice(),
         paymentMethod: paymentMethod // Include payment method in order data
@@ -124,45 +141,59 @@ const ScheduleOrder = () => {
   };
 
   const calculateTotalPrice = () => {
-    const pricePerDay = product ? (product.discountFees || product.regularFees) : 0;
-    return (pricePerDay * selectedDates.length) + 20; // +20 is the fixed shipping fee
+    if (!selectedSubscription || !selectedDate) {
+      return 0; // No subscription or date selected
+    }
+
+    const pricePerDay = selectedSubscription.price;
+     // Calculate days difference + 1 for inclusive range
+
+    return (pricePerDay)  // +20 is the fixed shipping fee
   };
 
   return (
     <div className="mb-20 font-nunito">
       <div className='px-2 py-4 shadow rounded m-3 bg-red-100'>
-      <div className="text-black text-lg font-medium mr-2 text-center">Hey {userName || 'My Dashboard'}!</div>
+        <div className="text-black text-lg font-medium mr-2 text-center">Hey {userName || 'My Dashboard'}!</div>
 
-        <h2 className="text-lg font-bold font-nunito color text-center">Schedule Your Order</h2>
-        
+        <div>
+          {selectedSubscription ? (
+            <div className='text-center bg-sky color px-2 rounded-md font-bold border-2 flex justify-between w-4/5 m-auto'>
+              <p>{selectedSubscription.days} day trial</p>
+              <p>Rs {selectedSubscription.price}</p>
+            </div>
+          ) : (
+            <p>No subscription selected.</p>
+          )}
+        </div>
       </div>
+
       <div className="mb-4 w-full mt-2 px-3 font-nunito">
-        <p className="font-semibold text-lg ">Select preferred days</p>
-        <p className='leading-none text-gray-400 mb-4'>Choose the dates on which you want to get delivery</p>
+        <p className="font-semibold text-lg ">Select preferred day</p>
+        <p className='leading-none text-gray-400 mb-4'>Choose the date on which you want to get delivery</p>
         <div>
           <div className='w-full font-nunito'>
             <DatePicker
-              selected={null}
+              selected={selectedDate}
               onChange={handleDateChange}
               inline
-              highlightDates={selectedDates}
               dayClassName={date =>
-                selectedDates.some(selectedDate => selectedDate.toDateString() === date.toDateString())
-                  ? 'bg-blue-500 text-white'
+                selectedDate && selectedDate.toDateString() === date.toDateString()
+                  ? 'bg-red-500 text-white'
                   : undefined
               }
             />
           </div>
           <div className="mt-4 font-nunito">
-            <h3 className="font-semibold font-lg mb-2">Selected Dates</h3>
-
-            <div className='grid grid-cols-3 gap-2'>
-              {selectedDates.map((date, index) => (
-                <div key={index} className="color border text-center px-1 rounded-lg py-2 border-red-500">
-                  {format(date, 'EE dd MMM')}
-                </div>
-              ))}
-            </div>
+            <h3 className="font-semibold font-lg mb-2">Selected Date</h3>
+            {selectedDate && (
+              <div className='color border text-center px-1 rounded-lg py-2 border-red-500'>
+                {format(selectedDate, 'EE dd MMM')}
+              </div>
+            )}
+            {endDate && (
+              <p className="text-sm text-gray-500 mt-1">No delivery from {format(endDate, 'EE dd MMM')}</p>
+            )}
           </div>
         </div>
       </div>
@@ -185,39 +216,39 @@ const ScheduleOrder = () => {
       </div>
 
       <div className='bg-sky m-3 border shadow rounded-lg'> 
-      <p className='pt-2 pl-2'>Enter Address</p> 
-      <div className='mx-4 bg-white border-slate-200 mt-2 flex flex-row justify-between border-2 rounded-md px-2 items-center'>
-        <input 
-          className='items-center text-xl w-full h-full' 
-          placeholder='Enter address' 
-          value={newAddress}
-          onChange={handleAddressChange}
-        />
-        <div className='hidden md:block w-44 h-full place-content-center px-4 border-l-2'>
-          <button 
-            className='text-center text-[#F2971F] text-lg flex flex-row gap-2 font-semibold items-center' 
-            onClick={updateAddress}
-          >
-            <span>Add Address</span>
-            <MdAddLocationAlt className='text-xl' />
-          </button>
+        <p className='pt-2 pl-2'>Enter Address</p> 
+        <div className='mx-4 bg-white border-slate-200 mt-2 flex flex-row justify-between border-2 rounded-md px-2 items-center'>
+          <input 
+            className='items-center text-xl w-full h-full' 
+            placeholder='Enter address' 
+            value={newAddress}
+            onChange={handleAddressChange}
+          />
+          <div className='hidden md:block w-44 h-full place-content-center px-4 border-l-2'>
+            <button 
+              className='text-center text-[#F2971F] text-lg flex flex-row gap-2 font-semibold items-center' 
+              onClick={updateAddress}
+            >
+              <span>Add Address</span>
+              <MdAddLocationAlt className='text-xl' />
+            </button>
+          </div>
+          <div className='block md:hidden'>
+            <button className='text-3xl p-2' onClick={updateAddress}>
+              <MdAddLocationAlt />
+            </button>
+          </div>
         </div>
-        <div className='block md:hidden'>
-          <button className='text-3xl p-2' onClick={updateAddress}>
-            <MdAddLocationAlt />
-          </button>
-        </div>
+        <p className='text-lg  m-4'>{address}</p>
+        {errorMessage && <p className='text-red-500'>{errorMessage}</p>}
       </div>
-      <p className='text-lg  m-4'>{address}</p>
-      {errorMessage && <p className='text-red-500'>{errorMessage}</p>}
-      </div>
-    
+
       <div className=' flex flex-col m-3'>
         <p className='text-lg font-semibold'>Price details</p>
         <div className='bg-[#f5f4f4] p-3 mt-2 mb-6 flex flex-col gap-3'>
           <div className='flex flex-row justify-between items-center'>
             <div className='text-gray-700 text-base'>Subtotal</div>
-            <div className='color'>{calculateTotalPrice() - 20}</div>
+            <div className='color'>{calculateTotalPrice()}</div>
           </div>
           <div className='flex flex-row justify-between items-center'>
             <div className='text-gray-700 text-base'>Shipping Fee</div>
